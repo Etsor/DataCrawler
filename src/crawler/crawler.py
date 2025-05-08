@@ -1,25 +1,36 @@
-import src.config.log_config as log_config
-from src.config.tqdm_config import loading
 import logging
+import os
 import time
+import aiohttp
+import asyncio
+
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
+from selenium.common.exceptions import WebDriverException
 from typing import List, Dict
-import asyncio
+
 from concurrent.futures import ThreadPoolExecutor
+
+import src.config.log_config
+from src.config.tqdm_config import loading
 
 
 BASE_URL = "https://sandbox.oxylabs.io/products"
 
+class CrawlerException(Exception):
+    pass
 
 def setup_driver() -> webdriver.Chrome:
-    options = Options()
-    options.add_argument("--headless")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--blink-settings=imagesEnabled=false")
+    try:
+        options = Options()
+        options.add_argument("--headless")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--blink-settings=imagesEnabled=false")
+        return webdriver.Chrome(options=options)
     
-    return webdriver.Chrome(options=options)
+    except WebDriverException as e:
+        raise CrawlerException(f"Driver initialization error: {e}")
 
 
 def fetch_page_data(
@@ -30,7 +41,7 @@ def fetch_page_data(
     
     logging.info(f"fetching page {page}: {url}")
     loading()
-
+    
     driver.get(url)
     time.sleep(1.0)
 
@@ -51,7 +62,7 @@ def fetch_page_data(
                 By.CLASS_NAME, "category").text.strip()
             
             price = card.find_element(
-                By.CLASS_NAME, "price-wrapper").text.strip()\
+                By.CLASS_NAME, "price-wrapper").text.strip() \
                         .replace(",", ".").replace(" €", "")
             
             availability = "Unknown"
@@ -97,10 +108,15 @@ def fetch_page_data_and_quit(
 
 
 async def crawl_all_products(pages_to_crawl: int) -> List[Dict]:
+    if pages_to_crawl < 1 or pages_to_crawl > 94:
+        raise ValueError("Number of pages must be between 1 and 94")
+    
     loop = asyncio.get_event_loop()
     all_products = []
+    
+    max_workers = min(pages_to_crawl, os.cpu_count() * 2)
 
-    with ThreadPoolExecutor(max_workers=6) as executor:
+    with ThreadPoolExecutor(max_workers) as executor:
         futures = []
 
         for page in range(1, pages_to_crawl + 1):

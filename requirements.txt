@@ -2,3 +2,7 @@ lxml
 selenium
 tqdm
 asyncio
+aiohttp
+pytest
+pytest-asyncio
+webdriver-manager

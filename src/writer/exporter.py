@@ -1,12 +1,18 @@
-import src.config.log_config as log_config
 import logging
+import os
 import xml.etree.ElementTree as ET
+
 from typing import List, Dict
+
+import src.config.log_config
 
 def save_to_xml(
         products: List[Dict],
         schema_location: str,
         output_file: str):
+    
+    if not products:
+        raise ValueError("Product list cannot be empty")
     
     root = ET.Element("products", {
         "xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
@@ -32,8 +38,12 @@ def save_to_xml(
             ET.SubElement(product_el, "description")\
                 .text = product["description"]
 
-    tree = ET.ElementTree(root)
-    ET.indent(tree, space="\t")
-    tree.write(output_file, encoding="utf-8", xml_declaration=True)
+    try:
+        tree = ET.ElementTree(root)
+        ET.indent(tree, space="\t")
+        tree.write(output_file, encoding="utf-8", xml_declaration=True)
+    
+    except Exception as e:
+        raise IOError(f"Error creating file: {e}")
     
     logging.info(f"saved to {output_file}")

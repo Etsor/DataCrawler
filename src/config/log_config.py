@@ -1,6 +1,7 @@
 import logging
 
-logging.basicConfig(level=logging.INFO,
+logging.basicConfig(
+                    level="INFO",
                     filename="logs.log",
                     filemode="w", 
                     format="%(asctime)s %(levelname)s %(message)s")
